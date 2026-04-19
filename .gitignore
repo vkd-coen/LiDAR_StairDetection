@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Model weights
+checkpoints/*.pth
+
+# Data files
+data/
+
+# Third party SDK
+unitree_sdk2_python/
+
+# Virtual environment
+*.env
