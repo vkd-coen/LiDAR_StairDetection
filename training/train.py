@@ -15,7 +15,8 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from models.stair_cnn import StairCNN
-from preprocessing.dummy_data import generate_dataset
+# from preprocessing.dummy_data import generate_dataset
+from preprocessing.rosbag_loader import generate_dataset_from_bags
 
 # --- Config ---
 NUM_SAMPLES   = 500
@@ -31,7 +32,15 @@ def train():
 
     # --- Data ---
     print("Generating synthetic dataset...")
-    X, y = generate_dataset(NUM_SAMPLES)
+    # X, y = generate_dataset(NUM_SAMPLES)
+    X, y = generate_dataset_from_bags(
+        stairs_bag_dir="/opt/stair_data/stairs",
+        flat_bag_dir="/opt/stair_data/flat_ground",
+        max_samples=2000,
+        msgs_per_bag=50
+        # ,augment=True,
+        # augment_factor=3
+    )
     X_tensor = torch.tensor(X)
     y_tensor = torch.tensor(y)
 

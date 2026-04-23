@@ -20,8 +20,26 @@ class Voxelizer:
         self.z_range = z_range
         self.grid_size = grid_size
 
+    # def crop(self, points: np.ndarray) -> np.ndarray:
+    #     """Keep only points within the region of interest."""
+    #     mask = (
+    #         (points[:, 0] >= self.x_range[0]) & (points[:, 0] <= self.x_range[1]) &
+    #         (points[:, 1] >= self.y_range[0]) & (points[:, 1] <= self.y_range[1]) &
+    #         (points[:, 2] >= self.z_range[0]) & (points[:, 2] <= self.z_range[1])
+    #     )
+    #     return points[mask]
     def crop(self, points: np.ndarray) -> np.ndarray:
-        """Keep only points within the region of interest."""
+        """Keep only valid points within the region of interest."""
+        # Filter out invalid sentinel values (255.0 = out of range)
+        valid = (
+            (points[:, 0] < 250.0) &  # filter 255 sentinel
+            (points[:, 1] < 250.0) &
+            (points[:, 2] < 250.0) &
+            np.isfinite(points).all(axis=1)
+        )
+        points = points[valid]
+        
+        # Then crop to region of interest
         mask = (
             (points[:, 0] >= self.x_range[0]) & (points[:, 0] <= self.x_range[1]) &
             (points[:, 1] >= self.y_range[0]) & (points[:, 1] <= self.y_range[1]) &

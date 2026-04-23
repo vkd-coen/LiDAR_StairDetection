@@ -1,0 +1,28 @@
+# At every time starting
+
+sudo ip addr add 192.168.123.100/24 dev eno2
+sudo ip link set eno2 up
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eno2"/></Interfaces></General></Domain></CycloneDDS>'
+
+# Terminal 1
+source /opt/ros2_lidar_env/bin/activate
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eno2"/></Interfaces></General></Domain></CycloneDDS>'
+cd ~/Desktop/stair_detection
+python lidar/lidar_ros2_publisher.py eno2
+
+# Terminal 2
+source /opt/ros/humble/setup.bash
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eno2"/></Interfaces></General></Domain></CycloneDDS>'
+rviz2
+
+# Terminal 3
+source /opt/ros/humble/setup.bash
+export CYCLONEDDS_URI='<CycloneDDS><Domain><General><Interfaces><NetworkInterface name="eno2"/></Interfaces></General></Domain></CycloneDDS>'
+# Record stairs
+ros2 bag record /utlidar/cloud -o ~/Desktop/stair_detection/data/stairs/run1
+# When done (Ctrl+C), record flat ground
+ros2 bag record /utlidar/cloud -o ~/Desktop/stair_detection/data/flat_ground/run1
+
+new version on the other disk!
+ros2 bag record /utlidar/cloud -o /opt/stair_data/flat_ground/run26
+ros2 bag record /utlidar/cloud -o /opt/stair_data/stairs/run26
