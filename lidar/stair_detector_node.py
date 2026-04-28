@@ -58,7 +58,7 @@ class StairDetectorNode(Node):
         self.stairs_prob     = 0.0
         self.last_stair_xyz  = None
         self.stair_center_history = []
-        self.history_size = 10
+        self.history_size = 13
 
         self.get_logger().info("Stair detector node started")
         self.get_logger().info(f"Point cloud   → {TOPIC_OUT}")
@@ -113,7 +113,7 @@ class StairDetectorNode(Node):
             svm_result = self.svm.predict(features)
             svm_prob = svm_result['stairs_prob']
 
-            if svm_prob < 0.4:
+            if svm_prob < 0.8:
                 # SVM confident this is NOT stairs — skip CNN
                 self.stairs_detected = False
                 self.stairs_prob = 0.0
@@ -149,7 +149,7 @@ class StairDetectorNode(Node):
 
         # Require BOTH SVM and CNN to agree
         if self.svm_ready:
-            self.stairs_detected = (svm_prob > 0.7) and (result['stairs_prob'] > 0.8)
+            self.stairs_detected = (svm_prob > 0.8) and (result['stairs_prob'] > 0.85)
         else:
             self.stairs_detected = result['stairs_prob'] > 0.8
 
@@ -164,28 +164,127 @@ class StairDetectorNode(Node):
         # --- Publish marker ---
         self.publish_marker(xyz, ros_msg.header)
 
+    # def publish_marker(self, xyz: np.ndarray, header):
+    #     markers = MarkerArray()
+
+    #     if self.stairs_detected and len(xyz) > 0:
+    #         front = xyz[(xyz[:, 0] > 0.3) & (xyz[:, 0] < 3.0)]
+    #         if len(front) > 10:
+    #             # Crop to stair points only (above ground level)
+    #             stair_points = front[front[:, 2] > front[:, 2].min() + 0.05]
+    #             if len(stair_points) < 10:
+    #                 stair_points = front  # fallback
+
+    #             x_min = float(stair_points[:, 0].min())
+    #             x_max = float(stair_points[:, 0].max())
+    #             y_min = float(stair_points[:, 1].min())
+    #             y_max = float(stair_points[:, 1].max())
+    #             z_min = float(stair_points[:, 2].min())
+    #             z_max = float(stair_points[:, 2].max())
+
+    #             cx = (x_min + x_max) / 2
+    #             cy = (y_min + y_max) / 2
+    #             cz = (z_min + z_max) / 2
+
+    #             # # Only update history when confidence is high
+    #             # if self.stairs_prob > 0.85:
+    #             #     self.stair_center_history.append([cx, cy, cz])
+    #             #     if len(self.stair_center_history) > self.history_size:
+    #             #         self.stair_center_history.pop(0)
+
+    #             # # Use smoothed center if history available
+    #             # if len(self.stair_center_history) > 0:
+    #             #     cx, cy, cz = np.mean(self.stair_center_history, axis=0)
+    #             # Always update history when stairs detected
+    #             self.stair_center_history.append([cx, cy, cz])
+    #             if len(self.stair_center_history) > self.history_size:
+    #                 self.stair_center_history.pop(0)
+    #             cx, cy, cz = np.mean(self.stair_center_history, axis=0)
+
+    #             # --- Red bounding box ---
+    #             box = Marker()
+    #             box.header  = header
+    #             box.ns      = "stair_box"
+    #             box.id      = 0
+    #             box.type    = Marker.LINE_LIST
+    #             box.action  = Marker.ADD
+    #             box.scale.x = 0.03
+    #             box.color   = ColorRGBA(r=1.0, g=0.0, b=0.0, a=0.9)
+    #             box.lifetime.sec = 1
+
+    #             corners = [
+    #                 [x_min, y_min, z_min], [x_max, y_min, z_min],
+    #                 [x_max, y_max, z_min], [x_min, y_max, z_min],
+    #                 [x_min, y_min, z_max], [x_max, y_min, z_max],
+    #                 [x_max, y_max, z_max], [x_min, y_max, z_max],
+    #             ]
+    #             edges = [
+    #                 (0,1),(1,2),(2,3),(3,0),
+    #                 (4,5),(5,6),(6,7),(7,4),
+    #                 (0,4),(1,5),(2,6),(3,7),
+    #             ]
+    #             for i, j in edges:
+    #                 box.points.append(Point(
+    #                     x=corners[i][0], y=corners[i][1], z=corners[i][2]))
+    #                 box.points.append(Point(
+    #                     x=corners[j][0], y=corners[j][1], z=corners[j][2]))
+    #             markers.markers.append(box)
+
+    #             # --- Red arrow pointing down to stairs ---
+    #             arrow = Marker()
+    #             arrow.header  = header
+    #             arrow.ns      = "stair_arrow"
+    #             arrow.id      = 1
+    #             arrow.type    = Marker.ARROW
+    #             arrow.action  = Marker.ADD
+    #             arrow.scale.x = 0.1
+    #             arrow.scale.y = 0.2
+    #             arrow.scale.z = 0.3
+    #             arrow.color   = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
+    #             arrow.lifetime.sec = 1
+    #             arrow.points.append(Point(x=cx, y=cy, z=cz + 1.0))
+    #             arrow.points.append(Point(x=cx, y=cy, z=cz + 0.1))
+    #             markers.markers.append(arrow)
+
+    #             # --- Text label ---
+    #             text = Marker()
+    #             text.header  = header
+    #             text.ns      = "stair_text"
+    #             text.id      = 2
+    #             text.type    = Marker.TEXT_VIEW_FACING
+    #             text.action  = Marker.ADD
+    #             text.pose.position.x = cx
+    #             text.pose.position.y = cy
+    #             text.pose.position.z = cz + 1.3
+    #             text.scale.z = 0.3
+    #             text.color   = ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
+    #             text.text    = f"STAIRS {self.stairs_prob:.0%}"
+    #             text.lifetime.sec = 1
+    #             markers.markers.append(text)
+
+    #     else:
+    #         self.stair_center_history = []  # reset history when no stairs
+    #         for ns, mid in [("stair_box", 0), ("stair_arrow", 1),
+    #                         ("stair_text", 2)]:
+    #             clear = Marker()
+    #             clear.header = header
+    #             clear.ns     = ns
+    #             clear.id     = mid
+    #             clear.action = Marker.DELETE
+    #             markers.markers.append(clear)
+
+    #     self.marker_pub.publish(markers)
+
     def publish_marker(self, xyz: np.ndarray, header):
         markers = MarkerArray()
 
         if self.stairs_detected and len(xyz) > 0:
-            # Crop to stair region
-            # front = xyz[(xyz[:, 0] > 0.3) & (xyz[:, 0] < 3.0)]
-            # if len(front) > 10:
-            #     x_min = float(front[:, 0].min())
-            #     x_max = float(front[:, 0].max())
-            #     y_min = float(front[:, 1].min())
-            #     y_max = float(front[:, 1].max())
-            #     z_min = float(front[:, 2].min())
-            #     z_max = float(front[:, 2].max())
-            #     cx = (x_min + x_max) / 2
-            #     cy = (y_min + y_max) / 2
-            #     cz = (z_min + z_max) / 2
             front = xyz[(xyz[:, 0] > 0.3) & (xyz[:, 0] < 3.0)]
             if len(front) > 10:
-                # Option 2 — crop to stair points only (above ground level)
+                # Crop to stair points only (above ground level)
                 stair_points = front[front[:, 2] > front[:, 2].min() + 0.05]
                 if len(stair_points) < 10:
-                    stair_points = front  # fallback to all points
+                    stair_points = front  # fallback
 
                 x_min = float(stair_points[:, 0].min())
                 x_max = float(stair_points[:, 0].max())
@@ -194,15 +293,19 @@ class StairDetectorNode(Node):
                 z_min = float(stair_points[:, 2].min())
                 z_max = float(stair_points[:, 2].max())
 
-                # Option 1 — smooth center over last N detections
+                # Smooth the full bounding box over history
+                self.stair_center_history.append([x_min, x_max, y_min, y_max, z_min, z_max])
+                if len(self.stair_center_history) > self.history_size:
+                    self.stair_center_history.pop(0)
+
+                avg = np.mean(self.stair_center_history, axis=0)
+                x_min, x_max = avg[0], avg[1]
+                y_min, y_max = avg[2], avg[3]
+                z_min, z_max = avg[4], avg[5]
+
                 cx = (x_min + x_max) / 2
                 cy = (y_min + y_max) / 2
                 cz = (z_min + z_max) / 2
-
-                self.stair_center_history.append([cx, cy, cz])
-                if len(self.stair_center_history) > self.history_size:
-                    self.stair_center_history.pop(0)
-                cx, cy, cz = np.mean(self.stair_center_history, axis=0)
 
                 # --- Red bounding box ---
                 box = Marker()
@@ -267,7 +370,6 @@ class StairDetectorNode(Node):
 
         else:
             self.stair_center_history = []  # reset history when no stairs
-            # Clear all markers
             for ns, mid in [("stair_box", 0), ("stair_arrow", 1),
                             ("stair_text", 2)]:
                 clear = Marker()
