@@ -138,6 +138,7 @@ in this repository due to size constraints (3.7GB total).
 ---
 
 ## Project Structure
+```text
 stair_detection/
 ├── lidar/
 │   ├── read_lidar.py              # Raw point cloud reader
@@ -161,7 +162,7 @@ stair_detection/
 └── checkpoints/
 ├── best_model.pth             # Trained CNN checkpoint
 └── stair_svm.pkl              # Trained SVM checkpoint
-
+```
 ---
 
 ## Results Summary
